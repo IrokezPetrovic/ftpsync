@@ -1,0 +1,14 @@
+{
+    "tasks":[
+        {
+            "source":"C:\\temp",
+            "destination":{
+                "server":"monitor.digisky.ru",
+                "port":"2124",                
+                "path":"/Pool0/production/test",
+                "username":"Administrator@digisky.lan",
+                "password":"Copoakbo123"
+            }
+        }
+    ]
+}
