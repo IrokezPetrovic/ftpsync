@@ -12,7 +12,8 @@
                 },
                 {
                     "from":"/Volumes/WORK/models",
-                    "to":"models"
+                    "to":"models",
+                    "exclude":[".gif"]
                 }
             ]
         }

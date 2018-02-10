@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -17,12 +18,12 @@ func Sync(profile config.Profile, wg *sync.WaitGroup) {
 	var profileWg sync.WaitGroup
 	for _, task := range profile.Tasks {
 		profileWg.Add(1)
-		go BackupTask(profile, task.From, task.To, &profileWg)
+		go BackupTask(profile, task.From, task.To, task.Exclude, &profileWg)
 	}
 	profileWg.Wait()
 }
 
-func BackupTask(profile config.Profile, src, dst string, wg *sync.WaitGroup) {
+func BackupTask(profile config.Profile, src, dst string, excludes []string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var ftpConf goftp.Config
 	ftpConf.User = profile.Username
@@ -37,11 +38,16 @@ func BackupTask(profile config.Profile, src, dst string, wg *sync.WaitGroup) {
 		ftpClient.Mkdir(dstPath)
 	}
 
-	syncDir(src, string(filepath.Separator), ftpClient, ftpath(profile.Path+"/"+dst))
+	var exclude *regexp.Regexp = nil
+	if len(excludes) > 0 {
+		exclude, _ = regexp.Compile("(" + strings.Join(excludes, ")|(") + ")")
+	}
+
+	syncDir(src, string(filepath.Separator), ftpClient, ftpath(profile.Path+"/"+dst), exclude)
 	ftpClient.Close()
 }
 
-func syncDir(base, path string, ftp *goftp.Client, ftpbase string) {
+func syncDir(base, path string, ftp *goftp.Client, ftpbase string, excludes *regexp.Regexp) {
 	fmt.Printf("Sync %s \n", path)
 	files, err := ioutil.ReadDir(filepath.Join(base, path))
 	if err != nil {
@@ -58,6 +64,14 @@ func syncDir(base, path string, ftp *goftp.Client, ftpbase string) {
 	}
 
 	for _, file := range files {
+		if excludes != nil {
+			fullName := filepath.Join(base, path, file.Name())
+			if excludes.MatchString(fullName) {
+				fmt.Printf("Exclude %s \n", fullName)
+				continue
+			}
+		}
+
 		ftpFile := ftpFilesMap[file.Name()]
 		if file.IsDir() {
 			if ftpFile != nil && !ftpFile.IsDir() {
@@ -70,7 +84,7 @@ func syncDir(base, path string, ftp *goftp.Client, ftpbase string) {
 				ftp.Mkdir(ftpath(ftpbase + "/" + path + "/" + file.Name()))
 			}
 
-			syncDir(base, filepath.Join(path, file.Name()), ftp, ftpbase)
+			syncDir(base, filepath.Join(path, file.Name()), ftp, ftpbase, excludes)
 
 		} else {
 

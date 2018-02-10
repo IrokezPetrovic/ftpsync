@@ -13,6 +13,7 @@ type Profile struct {
 }
 
 type BackupTask struct {
-	From string
-	To   string
+	From    string
+	To      string
+	Exclude []string
 }
