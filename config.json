@@ -1,14 +1,20 @@
 {
-    "tasks":[
+    "profiles":[
         {
-            "source":"C:\\temp",
-            "destination":{
-                "server":"monitor.digisky.ru",
-                "port":"2124",                
-                "path":"/Pool0/production/test",
-                "username":"Administrator@digisky.lan",
-                "password":"Copoakbo123"
-            }
+            "server":"monitor.digisky.ru:2124",            
+            "username":"Administrator@digisky.lan",
+            "password":"Copoakbo123",
+            "path":"/Pool0/production/test",
+            "tasks":[
+                {
+                    "from":"/Volumes/WORK/etc",
+                    "to":"etc"
+                },
+                {
+                    "from":"/Volumes/WORK/models",
+                    "to":"models"
+                }
+            ]
         }
     ]
 }

@@ -12,17 +12,33 @@ import (
 	"github.com/secsy/goftp"
 )
 
-func Sync(task config.Task, wg *sync.WaitGroup) {
+func Sync(profile config.Profile, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var profileWg sync.WaitGroup
+	for _, task := range profile.Tasks {
+		profileWg.Add(1)
+		go BackupTask(profile, task.From, task.To, &profileWg)
+	}
+	profileWg.Wait()
+}
+
+func BackupTask(profile config.Profile, src, dst string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var ftpConf goftp.Config
-	ftpConf.User = task.Destination.Username
-	ftpConf.Password = task.Destination.Password
-	ftpClient, err := goftp.DialConfig(ftpConf, "monitor.digisky.ru:2124")
-
+	ftpConf.User = profile.Username
+	ftpConf.Password = profile.Password
+	ftpClient, err := goftp.DialConfig(ftpConf, profile.Server)
 	if err != nil {
 		return
 	}
-	syncDir(task.Source, string(filepath.Separator), ftpClient, task.Destination.Path)
+	dstPath := ftpath(profile.Path + "/" + dst)
+	_, err = ftpClient.Stat(dstPath)
+	if err != nil {
+		ftpClient.Mkdir(dstPath)
+	}
+
+	syncDir(src, string(filepath.Separator), ftpClient, ftpath(profile.Path+"/"+dst))
+	ftpClient.Close()
 }
 
 func syncDir(base, path string, ftp *goftp.Client, ftpbase string) {
@@ -52,8 +68,9 @@ func syncDir(base, path string, ftp *goftp.Client, ftpbase string) {
 			if ftpFile == nil {
 				fmt.Printf("Make dir %s \n", ftpath(ftpbase+"/"+path+"/"+file.Name()))
 				ftp.Mkdir(ftpath(ftpbase + "/" + path + "/" + file.Name()))
-				syncDir(base, filepath.Join(path, file.Name()), ftp, ftpbase)
 			}
+
+			syncDir(base, filepath.Join(path, file.Name()), ftp, ftpbase)
 
 		} else {
 
